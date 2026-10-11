@@ -1,0 +1,101 @@
+{
+  "entities": {
+    "user": {
+      "title": "User",
+      "description": "Authenticated user profile bound to an authorized tenant organization",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "email": { "type": "string", "format": "email", "maxLength": 128 },
+        "displayName": { "type": "string", "maxLength": 128 },
+        "photoURL": { "type": "string", "maxLength": 512 },
+        "tenantId": { "type": "string", "maxLength": 64 },
+        "role": { "type": "string", "enum": ["member", "manager", "admin"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "email", "tenantId", "role"]
+    },
+    "tenant": {
+      "title": "Tenant",
+      "description": "Corporate organization entity for multi-tenant isolation",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 64 },
+        "name": { "type": "string", "maxLength": 128 },
+        "domain": { "type": "string", "maxLength": 128 },
+        "status": { "type": "string", "enum": ["active", "suspended"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "name", "status"]
+    },
+    "document": {
+      "title": "Document",
+      "description": "Tenant-isolated knowledge base document",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "tenantId": { "type": "string", "maxLength": 64 },
+        "title": { "type": "string", "maxLength": 256 },
+        "fileName": { "type": "string", "maxLength": 256 },
+        "fileSize": { "type": "number" },
+        "uploadedBy": { "type": "string", "maxLength": 128 },
+        "uploadedAt": { "type": "string", "format": "date-time" },
+        "content": { "type": "string", "maxLength": 500000 },
+        "chunkCount": { "type": "number" }
+      },
+      "required": ["id", "tenantId", "title", "content", "uploadedBy"]
+    },
+    "conversation": {
+      "title": "Conversation",
+      "description": "Chat thread strictly partitioned by tenant and user",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "tenantId": { "type": "string", "maxLength": 64 },
+        "userId": { "type": "string", "maxLength": 128 },
+        "title": { "type": "string", "maxLength": 256 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "tenantId", "userId", "title"]
+    },
+    "auditLog": {
+      "title": "AuditLog",
+      "description": "Immutable security and access telemetry entry",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "timestamp": { "type": "string", "format": "date-time" },
+        "tenantId": { "type": "string", "maxLength": 64 },
+        "userEmail": { "type": "string", "maxLength": 128 },
+        "action": { "type": "string", "maxLength": 128 },
+        "status": { "type": "number" },
+        "details": { "type": "string", "maxLength": 1024 },
+        "severity": { "type": "string", "enum": ["INFO", "WARN", "CRITICAL"] }
+      },
+      "required": ["id", "timestamp", "tenantId", "action", "status", "severity"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "user",
+      "description": "Registered user accounts with assigned tenant and permissions"
+    },
+    "/tenants/{tenantId}": {
+      "schema": "tenant",
+      "description": "Enterprise tenant partition metadata"
+    },
+    "/tenants/{tenantId}/documents/{documentId}": {
+      "schema": "document",
+      "description": "Company documents partitioned under tenant document collection"
+    },
+    "/tenants/{tenantId}/conversations/{conversationId}": {
+      "schema": "conversation",
+      "description": "Conversations partitioned under tenant collection"
+    },
+    "/auditLogs/{logId}": {
+      "schema": "auditLog",
+      "description": "Immutable audit telemetry for security incidents"
+    }
+  }
+}

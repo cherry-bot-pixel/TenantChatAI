@@ -1,0 +1,6 @@
+{
+  "name": "Tenant AI - Multi-Tenant AI Platform",
+  "description": "Secure multi-tenant AI chatbot platform with strict cryptographic tenant isolation, company document RAG, audit logs, and admin console.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

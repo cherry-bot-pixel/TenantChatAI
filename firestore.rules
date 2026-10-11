@@ -1,0 +1,96 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Default-deny catch-all safety net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Helper functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() > 0 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function getUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    function isSystemAdmin() {
+      return isSignedIn() && (
+        request.auth.token.email == 'hadassabellam78@gmail.com' ||
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+         getUserData().role == 'admin')
+      );
+    }
+
+    function isTenantMember(tId) {
+      return isSignedIn() &&
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+        getUserData().tenantId == tId;
+    }
+
+    // User Profiles
+    match /users/{userId} {
+      allow get: if isSignedIn() && (request.auth.uid == userId || isSystemAdmin());
+      allow list: if isSystemAdmin();
+      allow create: if isSignedIn() && request.auth.uid == userId && isValidId(userId);
+      allow update: if isSignedIn() && (request.auth.uid == userId || isSystemAdmin());
+      allow delete: if isSystemAdmin();
+    }
+
+    // Tenant Organizations
+    match /tenants/{tenantId} {
+      allow get: if isSignedIn() && (isTenantMember(tenantId) || isSystemAdmin());
+      allow list: if isSignedIn();
+      allow create, update, delete: if isSystemAdmin();
+
+      // Isolated Documents Subcollection
+      match /documents/{documentId} {
+        allow get: if isSignedIn() && (isTenantMember(tenantId) || isSystemAdmin());
+        allow list: if isSignedIn() && (isTenantMember(tenantId) || isSystemAdmin());
+        allow create: if isSignedIn() && isTenantMember(tenantId) && isValidId(documentId);
+        allow update: if isSignedIn() && isTenantMember(tenantId);
+        allow delete: if isSignedIn() && (isTenantMember(tenantId) || isSystemAdmin());
+      }
+
+      // Isolated Conversations Subcollection
+      match /conversations/{conversationId} {
+        allow get: if isSignedIn() && (
+          (isTenantMember(tenantId) && resource.data.userId == request.auth.uid) ||
+          isSystemAdmin()
+        );
+        allow list: if isSignedIn() && (
+          (isTenantMember(tenantId) && resource.data.userId == request.auth.uid) ||
+          isSystemAdmin()
+        );
+        allow create: if isSignedIn() && isTenantMember(tenantId) && isValidId(conversationId);
+        allow update: if isSignedIn() && isTenantMember(tenantId);
+        allow delete: if isSignedIn() && (
+          (isTenantMember(tenantId) && resource.data.userId == request.auth.uid) ||
+          isSystemAdmin()
+        );
+      }
+    }
+
+    // Audit Logs
+    match /auditLogs/{logId} {
+      allow read: if isSystemAdmin();
+      allow create: if isSignedIn() && isValidId(logId);
+      allow update, delete: if false; // Immutable audit log
+    }
+  }
+}
